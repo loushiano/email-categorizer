@@ -1,0 +1,6 @@
+to do in order:
+2- create generic items for generic store.
+3- create item for store.
+4- create request that includes request item.
+5- change status of request.
+6- 

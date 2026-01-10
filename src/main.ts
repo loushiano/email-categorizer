@@ -21,10 +21,7 @@ async function bootstrap() {
     }),
   );
 
-  if (process.env.NODE_ENV == 'production') {
-    app.setGlobalPrefix('market');
-  }
-  await app.listen(3000);
+  await app.listen(8085);
   logger.log('okay we are live');
 }
 bootstrap();

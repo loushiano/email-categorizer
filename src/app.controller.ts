@@ -1,12 +1,15 @@
-import { Controller, Get } from '@nestjs/common';
-import { AppResponse } from './app-type';
-import { Public } from './authentication/constants';
-
-@Controller('service')
+import { Body, Controller, Get, Post, Query, Res } from '@nestjs/common';
+import { AppService } from './app.service';
+import { ConverstionDTO } from './conversion.dto';
+@Controller('jumpapp')
 export class AppController {
-  @Public()
-  @Get('healthcheck')
-  getHello(): AppResponse {
-    return { status: 200 };
+  constructor(private readonly appService: AppService) {}
+  @Post('conversions')
+  createConversion(@Res() res, @Body() body: ConverstionDTO) {
+    this.appService.saveConversion(body, res);
+  }
+  @Get('conversions')
+  getConversions(@Res() res, @Query('sessionId') sessionId: string) {
+    this.appService.getEntities(res, sessionId);
   }
 }

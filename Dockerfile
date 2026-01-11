@@ -18,11 +18,8 @@ WORKDIR /app
 # Copy package files
 COPY --from=package-slim /tmp/package-slim.json ./package.json
 COPY package-lock.json ./
+RUN npm install --frozen-lockfile
 
-# Install dependencies
-RUN npm ci
-
-# Copy source code and build
 COPY . .
 RUN npm run build
 
@@ -71,6 +68,8 @@ RUN apt-get update && apt-get install -y \
     lsb-release \
     wget \
     xdg-utils \
+    iproute2 \
+    curl \
     # Additional utilities
     dumb-init \
     # Clean up

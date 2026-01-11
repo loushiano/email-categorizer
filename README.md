@@ -9,21 +9,12 @@ Before running the application, ensure you have the following installed:
 - **Node.js** v20 or higher
 - **npm** v9 or higher
 - **MySQL** v8.0 or higher
-
-### Optional Services
-
-Depending on your configuration, you may also need:
-
-- **Redis** - For caching
-- **RabbitMQ** - For async task processing
+- **Redis** - For caching and session management
+- **RabbitMQ** - For async task processing and message queues
 
 ## Installation
 
-1. **Clone the repository** and navigate to the backend directory:
-
-   ```bash
-   cd backend
-   ```
+1. **Clone the repository**
 
 2. **Install dependencies**:
 
@@ -68,17 +59,17 @@ Copy `.env.template` to `.env` and configure the following:
 | `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google service account JSON    |
 | `ANTHROPIC_API_KEY`              | Anthropic API key for AI features      |
 | `ENCRYPTION_KEY`                 | 32-character key for encrypting tokens |
+| `RABBITMQ_URL`                   | RabbitMQ connection URL (e.g., `amqp://localhost:5672`) |
+| `REDIS_HOST`                     | Redis host (e.g., `localhost`)         |
+| `REDIS_PORT`                     | Redis port (e.g., `6379`)              |
 
 ### Optional
 
-| Variable         | Description                   |
-| ---------------- | ----------------------------- |
-| `NODE_ENV`       | `development`, `production`   |
-| `JWT_SECRET`     | JWT signing secret            |
-| `RABBITMQ_URL`   | RabbitMQ connection URL       |
-| `REDIS_HOST`     | Redis host                    |
-| `REDIS_PORT`     | Redis port                    |
-| `REDIS_PASSWORD` | Redis password (if required)  |
+| Variable         | Description                  |
+| ---------------- | ---------------------------- |
+| `NODE_ENV`       | `development`, `production`  |
+| `JWT_SECRET`     | JWT signing secret           |
+| `REDIS_PASSWORD` | Redis password (if required) |
 
 ## Running the Application
 

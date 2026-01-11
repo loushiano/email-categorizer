@@ -1,73 +1,146 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="200" alt="Nest Logo" /></a>
-</p>
+# Vigelon Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+NestJS REST API backend for the Vigelon enterprise management system.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://coveralls.io/github/nestjs/nest?branch=master" target="_blank"><img src="https://coveralls.io/repos/github/nestjs/nest/badge.svg?branch=master#9" alt="Coverage" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+## Prerequisites
 
-## Description
+Before running the application, ensure you have the following installed:
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+- **Node.js** v20 or higher
+- **npm** v9 or higher
+- **MySQL** v8.0 or higher
+
+### Optional Services
+
+Depending on your configuration, you may also need:
+
+- **Redis** - For caching
+- **RabbitMQ** - For async task processing
 
 ## Installation
 
+1. **Clone the repository** and navigate to the backend directory:
+
+   ```bash
+   cd backend
+   ```
+
+2. **Install dependencies**:
+
+   ```bash
+   npm install
+   ```
+
+3. **Set up environment variables**:
+
+   ```bash
+   cp .env.template .env
+   ```
+
+   Edit `.env` and configure the required values (see [Environment Variables](#environment-variables) below).
+
+4. **Set up the database**:
+
+   Create a MySQL database matching your `DB_NAME` in `.env`, then run migrations:
+
+   ```bash
+   npm run migration:run
+   ```
+
+## Environment Variables
+
+Copy `.env.template` to `.env` and configure the following:
+
+### Required
+
+| Variable                         | Description                            |
+| -------------------------------- | -------------------------------------- |
+| `DB_HOST`                        | MySQL host (e.g., `localhost`)         |
+| `DB_PORT`                        | MySQL port (e.g., `3306`)              |
+| `DB_USER`                        | MySQL username                         |
+| `DB_PASSWORD`                    | MySQL password                         |
+| `DB_NAME`                        | MySQL database name                    |
+| `GOOGLE_CLIENT_ID`               | Google OAuth client ID                 |
+| `GOOGLE_CLIENT_SECRET`           | Google OAuth client secret             |
+| `GOOGLE_REDIRECT`                | Google OAuth redirect URL              |
+| `GOOGLE_QUEUE_TOPIC`             | Google Cloud Pub/Sub topic             |
+| `GOOGLE_QUEUE_SUB`               | Google Cloud Pub/Sub subscription      |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Path to Google service account JSON    |
+| `ANTHROPIC_API_KEY`              | Anthropic API key for AI features      |
+| `ENCRYPTION_KEY`                 | 32-character key for encrypting tokens |
+
+### Optional
+
+| Variable         | Description                   |
+| ---------------- | ----------------------------- |
+| `NODE_ENV`       | `development`, `production`   |
+| `JWT_SECRET`     | JWT signing secret            |
+| `RABBITMQ_URL`   | RabbitMQ connection URL       |
+| `REDIS_HOST`     | Redis host                    |
+| `REDIS_PORT`     | Redis port                    |
+| `REDIS_PASSWORD` | Redis password (if required)  |
+
+## Running the Application
+
 ```bash
-$ npm install
+# Development (watch mode)
+npm run start:dev
+
+# Production
+npm run build
+npm run start:prod
+
+# Debug mode
+npm run start:debug
 ```
 
-## Running the app
+The API will be available at `http://localhost:3000` by default.
+
+## Database Migrations
 
 ```bash
-# development
-$ npm run start
+# Run pending migrations (ALWAYS run before starting dev server)
+npm run migration:run
 
-# watch mode
-$ npm run start:dev
-
-# production mode
-$ npm run start:prod
+# Generate a new migration after entity changes
+NAME=MigrationName npm run migration:generate
 ```
 
-## Test
+## Testing
 
 ```bash
-# unit test
-$ npm run test
+# Unit tests
+npm run test
 
-# e2e tests
-$ npm run test:e2e
+# Watch mode
+npm run test:watch
 
-# test coverage
-$ npm run test:cov
+# Coverage report
+npm run test:cov
+
+# E2E tests
+npm run test:e2e
 ```
 
-## Support
+## Code Quality
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+```bash
+# Lint and auto-fix
+npm run lint
 
-## Stay in touch
+# Format code
+npm run format
+```
 
-- Author - [Kamil Myśliwiec](https://kamilmysliwiec.com)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+## Docker
+
+Build and run using Docker:
+
+```bash
+docker build -t vigelon-backend .
+docker run -p 3000:3000 --env-file .env vigelon-backend
+```
 
 ## License
 
-Nest is [MIT licensed](LICENSE).
+UNLICENSED - Proprietary software.

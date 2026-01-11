@@ -106,7 +106,7 @@ RUN chown -R appuser:appuser /app
 USER appuser
 
 # Expose port
-EXPOSE 3000
+EXPOSE 8085
 
 # Use dumb-init as entrypoint to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

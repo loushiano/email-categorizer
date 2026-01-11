@@ -50,6 +50,16 @@ function checkForForbiddenAttributes(data: any) {
 
   removePassword(data);
 }
+export function getHeader(headers, name) {
+  const header = headers.find((h) => h.name === name);
+  return header ? header.value : '';
+}
+
+export function aboutToExpire(epoch) {
+  const now = Date.now();
+  const fiveMinutesInMillis = 5 * 60 * 1000;
+  return epoch <= now + fiveMinutesInMillis;
+}
 
 const encryptionPass = process.env.ENCRYPTION_KEY;
 // An encrypt function

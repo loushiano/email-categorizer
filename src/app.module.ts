@@ -1,10 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { AppController } from './app.controller';
 import dbConfiguration from './db/database';
-import { AppService } from './app.service';
-import { MainEntity } from './main.entity';
+import { UsersModule } from './user/user.module';
+import { QueueModule } from './queue/queue.module';
+import { GoogleModule } from './google/google.module';
+import { CronModule } from './cron/cron.module';
+import { LlmIntegrationModule } from './llm-integration';
+import { CachingModule } from './cache/cache.module';
+import { APP_GUARD } from '@nestjs/core';
+import { JwtAuthGuard } from './authentication/jwt-auth.gard';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -21,9 +27,19 @@ import { MainEntity } from './main.entity';
       }),
       inject: [ConfigService],
     }),
-    TypeOrmModule.forFeature([MainEntity]),
+    ScheduleModule.forRoot(),
+    UsersModule,
+    QueueModule,
+    GoogleModule,
+    CronModule,
+    LlmIntegrationModule,
+    CachingModule,
   ],
-  controllers: [AppController],
-  providers: [AppService],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: JwtAuthGuard,
+    },
+  ],
 })
 export class AppModule {}

@@ -1,5 +1,10 @@
-import { AutoMap } from '@automapper/classes';
-import { Column, Entity, JoinColumn, OneToOne, PrimaryColumn } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinColumn,
+  ManyToOne,
+  PrimaryColumn,
+} from 'typeorm';
 import { User } from './user.entity';
 
 @Entity('user_credentials')
@@ -7,19 +12,19 @@ export class UserCredential {
   @PrimaryColumn()
   id: string;
 
-  @OneToOne((type) => User)
+  @ManyToOne(() => User, (user) => user.credentials)
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @AutoMap()
+  @Column({ name: 'inbox_email', type: 'varchar' })
+  inboxEmail: string;
+
   @Column({ name: 'tokens', type: 'text' })
   tokens: string;
 
-  @AutoMap()
   @Column({ name: 'expiry_date', type: 'bigint' })
   expiryDate: number;
 
-  @AutoMap()
   @Column({ name: 'watcher_date', type: 'bigint' })
   watcherDate: number;
 

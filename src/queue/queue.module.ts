@@ -34,5 +34,8 @@ export class QueueModule {
 
   async onModuleInit() {
     await delay(500);
+    this.producer.createQueue(Events.PROCESS_INCOMING_EMAIL);
+    this.producer.createQueue(Events.RENEW_WATCH);
+    this.producer.createQueue(Events.RENEW_TOKEN);
   }
 }

@@ -6,3 +6,8 @@ export const Public = () => SetMetadata(IS_PUBLIC_KEY, true);
 export const jwtConstants = {
   secret: process.env.SECRET_KEY || 'secret',
 };
+
+export enum UserStatus {
+  VALID = 'valid',
+  EXPIRED = 'expired',
+}

@@ -1,12 +1,16 @@
 export const getRouteName = (event: Events) => {
-  return `R_${process.env.ENVIRONMENT || 'production'}-${event}`;
+  return `R_email_agent-${event}`;
 };
 export const getQueueName = (event: Events) => {
-  return `Q_${process.env.ENVIRONMENT || 'production'}-${event}`;
+  return `Q_email_agent-${event}`;
 };
 
 export enum Events {
-  EMAIL_SENDING = 'email_sending',
+  RENEW_WATCH = 'renew_watch',
+  RENEW_TOKEN = 'renew_token',
+  PROCESS_INCOMING_EMAIL = 'process_incoming_email',
+  DELETE_GMAIL_MESSAGE = 'delete_gmail_message',
+  UNSUBSCRIBE_EMAIL = 'unsubscribe_email',
 }
 
 export const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

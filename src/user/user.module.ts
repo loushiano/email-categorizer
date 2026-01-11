@@ -1,15 +1,24 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { User } from './user.entity';
+import { UserCredential } from './userCredendtial.entity';
+import { UserEmailCategory } from './userEmailCategory.entity';
+import { UserIncomingEmail } from './userIncomingEmail.entity';
 import { UserService } from './user.service';
-import { UserProfile } from './user.mapper';
 import { UsersController } from './user.controller';
-import { StripeModule } from '../stripe/stripe.module';
-import { RabbitModule } from '../queue/queue.module';
+import { QueueModule } from '../queue/queue.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([User]), StripeModule, RabbitModule],
-  providers: [UserService, UserProfile],
+  imports: [
+    TypeOrmModule.forFeature([
+      User,
+      UserCredential,
+      UserEmailCategory,
+      UserIncomingEmail,
+    ]),
+    QueueModule,
+  ],
+  providers: [UserService],
   controllers: [UsersController],
   exports: [UserService],
 })

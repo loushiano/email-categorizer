@@ -233,6 +233,32 @@ Respond ONLY with a valid JSON object in this exact format (no markdown, no code
         },
       },
       {
+        name: 'select_option',
+        description:
+          'Select an option from a <select> dropdown element. Use this instead of click_element for dropdown menus.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            selector: {
+              type: 'string',
+              description:
+                'CSS selector for the <select> element (e.g., "select[name=frequency]", "#email-preferences")',
+            },
+            value: {
+              type: 'string',
+              description:
+                'The value attribute of the option to select. If not known, use the label parameter instead.',
+            },
+            label: {
+              type: 'string',
+              description:
+                'The visible text of the option to select. Use this when you do not know the value attribute.',
+            },
+          },
+          required: ['selector'],
+        },
+      },
+      {
         name: 'get_page_content',
         description:
           'Get the current page content and visible text. Use this to understand the current state of the page.',
@@ -282,10 +308,13 @@ Important guidelines:
   - Confirmation buttons (e.g., "Confirm", "Unsubscribe", "Yes, unsubscribe me")
   - Checkboxes that need to be checked/unchecked
   - Email confirmation fields that need to be filled
+  - Dropdown/select menus for preferences (use select_option tool for these)
 - Use CSS selectors to identify elements. Common patterns:
   - Buttons: "button", "input[type=submit]", "a.btn", "[role=button]"
   - Checkboxes: "input[type=checkbox]"
   - Links: "a[href*=unsubscribe]", "a:contains('unsubscribe')"
+  - Dropdowns: "select", "select[name=...]"
+- IMPORTANT: For <select> dropdown elements, use the select_option tool, NOT click_element. Clicking <option> elements directly will fail.
 - If a selector matches multiple elements, use the text parameter to narrow down
 - Look for success messages like "successfully unsubscribed", "removed from list", etc.
 - If you cannot find an unsubscribe link or the process fails, call complete_unsubscribe with success=false
@@ -440,6 +469,14 @@ Find the unsubscribe link and follow it to complete the unsubscription.`;
             userEmail,
           );
 
+        case 'select_option':
+          return await this.selectOption(
+            page,
+            input.selector as string,
+            input.value as string | undefined,
+            input.label as string | undefined,
+          );
+
         case 'get_page_content':
           return await this.getPageContent(page);
 
@@ -590,6 +627,74 @@ Current state: ${newState ? 'checked' : 'unchecked'}`;
     }
   }
 
+  private async selectOption(
+    page: Page,
+    selector: string,
+    value?: string,
+    label?: string,
+  ): Promise<string> {
+    this.logger.log(
+      `Selecting option from ${selector}: value="${value || ''}" label="${label || ''}"`,
+    );
+
+    try {
+      await page.waitForSelector(selector, { timeout: 10000 });
+
+      let selectedValue: string[];
+
+      if (value) {
+        // Select by value attribute
+        selectedValue = await page.select(selector, value);
+      } else if (label) {
+        // Select by visible text - need to find the value first
+        const optionValue = await page.$eval(
+          selector,
+          (select: HTMLSelectElement, labelText: string) => {
+            const options = Array.from(select.options);
+            const option = options.find(
+              (opt) =>
+                opt.text.toLowerCase().includes(labelText.toLowerCase()) ||
+                opt.textContent?.toLowerCase().includes(labelText.toLowerCase()),
+            );
+            return option?.value || null;
+          },
+          label,
+        );
+
+        if (!optionValue) {
+          // List available options for debugging
+          const availableOptions = await page.$eval(
+            selector,
+            (select: HTMLSelectElement) => {
+              return Array.from(select.options).map(
+                (opt) => `"${opt.text}" (value: ${opt.value})`,
+              );
+            },
+          );
+          return `Error: No option with label containing "${label}" found.\nAvailable options: ${availableOptions.join(', ')}`;
+        }
+
+        selectedValue = await page.select(selector, optionValue);
+      } else {
+        return 'Error: Either value or label must be provided';
+      }
+
+      // Get the selected option text for confirmation
+      const selectedText = await page.$eval(
+        selector,
+        (select: HTMLSelectElement) => {
+          const selectedOption = select.options[select.selectedIndex];
+          return selectedOption ? selectedOption.text : 'unknown';
+        },
+      );
+
+      return `Option selected successfully\nSelected: "${selectedText}" (value: ${selectedValue.join(', ')})`;
+    } catch (error) {
+      this.logger.error(`Error selecting option from ${selector}:`, error);
+      return `Error selecting option: ${error.message}`;
+    }
+  }
+
   private async getPageContent(page: Page): Promise<string> {
     try {
       // Get visible text content
@@ -658,6 +763,18 @@ Current state: ${newState ? 'checked' : 'unchecked'}`;
           const name = (el as HTMLInputElement).name ? `[name="${(el as HTMLInputElement).name}"]` : '';
           const placeholder = (el as HTMLInputElement).placeholder || '';
           elements.push(`Input: "${placeholder || 'text field'}" (selector: input${id}${name})`);
+        });
+
+        // Select dropdowns
+        document.querySelectorAll('select').forEach((el) => {
+          const select = el as HTMLSelectElement;
+          const id = el.id ? `#${el.id}` : '';
+          const name = select.name ? `[name="${select.name}"]` : '';
+          const options = Array.from(select.options).map((opt) => `"${opt.text}"`).slice(0, 5);
+          const moreOptions = select.options.length > 5 ? ` +${select.options.length - 5} more` : '';
+          const selectedOption = select.options[select.selectedIndex];
+          const selectedText = selectedOption ? selectedOption.text : 'none';
+          elements.push(`Select: options=[${options.join(', ')}${moreOptions}] selected="${selectedText}" (selector: select${id}${name})`);
         });
 
         return elements;

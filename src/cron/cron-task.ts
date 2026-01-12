@@ -1,10 +1,11 @@
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { EntityManager } from 'typeorm';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { QueuePublisher } from '../queue/queue.publisher';
 import { Events } from '../queue/queue-constants';
 import { CacheService } from '../cache/cache.service';
+import { UserService } from '../user/user.service';
 
 @Injectable()
 export class CronPlanner {
@@ -14,6 +15,7 @@ export class CronPlanner {
     @InjectEntityManager()
     private entityManager: EntityManager,
     private cache: CacheService,
+    private userService: UserService,
   ) {}
 
   @Cron(CronExpression.EVERY_30_MINUTES)
@@ -71,6 +73,38 @@ export class CronPlanner {
     } finally {
       await this.cache.evictData('RENEW_TOKEN_KEY');
       query.release();
+    }
+  }
+
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  public async retryFailedEmailProcessing() {
+    this.logger.log('checking for failed emails to retry');
+    if (await this.cache.getData('RETRY_FAILED_EMAILS_KEY')) {
+      this.logger.log('previous retry job in progress! will skip');
+      return;
+    }
+    try {
+      await this.cache.setData('RETRY_FAILED_EMAILS_KEY', '1', 300);
+
+      // Find failed emails that haven't been retried yet (max 1 retry attempt)
+      // and were processed more than 5 minutes ago
+      const failedEmails = await this.userService.findFailedEmailsForRetry(5);
+
+      this.logger.log(`Found ${failedEmails.length} failed emails to retry`);
+
+      for (const email of failedEmails) {
+        this.logger.log(
+          `Requeueing failed email ${email.id} (attempt ${email.processingAttempts + 1})`,
+        );
+        await this.queuePublisher.publish(Events.PROCESS_INCOMING_EMAIL, {
+          incomingEmailId: email.id,
+        });
+      }
+    } catch (error) {
+      this.logger.error('error retrying failed emails');
+      this.logger.error(error);
+    } finally {
+      await this.cache.evictData('RETRY_FAILED_EMAILS_KEY');
     }
   }
 }

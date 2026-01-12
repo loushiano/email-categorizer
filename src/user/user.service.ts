@@ -10,7 +10,12 @@ import {
   UpdateUserEmailCategoryDto,
 } from './userEmailCategory.dto';
 import { v4 as uuidv4 } from 'uuid';
-import { UserStatus } from 'src/utils/constants';
+import {
+  UserStatus,
+  UnsubscribeStatus,
+  EmailProcessingStatus,
+  EMAIL_LIMIT_PER_CREDENTIAL,
+} from 'src/utils/constants';
 import { QueuePublisher } from '../queue/queue.publisher';
 import { Events } from '../queue/queue-constants';
 
@@ -270,8 +275,50 @@ export class UserService {
     email.hasUnsubscribe = data.hasUnsubscribe;
     email.category = data.category;
     email.isProcessed = data.isProcessed;
+    email.processingStatus = EmailProcessingStatus.COMPLETED;
+    email.processedAt = Date.now();
 
     return await this.incomingEmailRepository.save(email);
+  }
+
+  async updateIncomingEmailProcessingStatus(
+    id: string,
+    status: EmailProcessingStatus,
+    incrementAttempts: boolean = false,
+  ) {
+    const email = await this.incomingEmailRepository.findOne({
+      where: { id },
+    });
+
+    if (!email) {
+      throw new NotFoundException(`Incoming email with id ${id} not found`);
+    }
+
+    email.processingStatus = status;
+    email.processedAt = Date.now();
+
+    if (incrementAttempts) {
+      email.processingAttempts = (email.processingAttempts || 0) + 1;
+    }
+
+    if (status === EmailProcessingStatus.COMPLETED) {
+      email.isProcessed = true;
+    }
+
+    return await this.incomingEmailRepository.save(email);
+  }
+
+  async findFailedEmailsForRetry(retryAfterMinutes: number = 5) {
+    const retryThreshold = Date.now() - retryAfterMinutes * 60 * 1000;
+
+    return await this.incomingEmailRepository
+      .createQueryBuilder('email')
+      .where('email.processingStatus = :status', {
+        status: EmailProcessingStatus.FAILED,
+      })
+      .andWhere('email.processingAttempts < :maxAttempts', { maxAttempts: 2 })
+      .andWhere('email.processedAt < :threshold', { threshold: retryThreshold })
+      .getMany();
   }
 
   async updateIncomingEmailUnsubscribed(id: string, unsubscribed: boolean) {
@@ -284,8 +331,87 @@ export class UserService {
     }
 
     email.unsubscribed = unsubscribed;
+    if (unsubscribed) {
+      email.unsubscribeStatus = UnsubscribeStatus.COMPLETED;
+    }
 
     return await this.incomingEmailRepository.save(email);
+  }
+
+  async updateIncomingEmailUnsubscribeStatus(
+    id: string,
+    status: UnsubscribeStatus,
+  ) {
+    const email = await this.incomingEmailRepository.findOne({
+      where: { id },
+    });
+
+    if (!email) {
+      throw new NotFoundException(`Incoming email with id ${id} not found`);
+    }
+
+    email.unsubscribeStatus = status;
+    if (status === UnsubscribeStatus.COMPLETED) {
+      email.unsubscribed = true;
+    }
+
+    return await this.incomingEmailRepository.save(email);
+  }
+
+  async incrementUserEmailCount(userId: string): Promise<{
+    emailCount: number;
+    isLimitReached: boolean;
+  }> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    user.emailCount = (user.emailCount || 0) + 1;
+
+    if (user.emailCount >= EMAIL_LIMIT_PER_CREDENTIAL) {
+      user.isLimitReached = true;
+    }
+
+    await this.userRepository.save(user);
+
+    return {
+      emailCount: user.emailCount,
+      isLimitReached: user.isLimitReached,
+    };
+  }
+
+  async checkUserEmailLimit(userId: string): Promise<boolean> {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      return true; // Treat as limit reached if user not found
+    }
+
+    return user.isLimitReached;
+  }
+
+  async getUserEmailStatus(userId: string) {
+    const user = await this.userRepository.findOne({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException(`User with id ${userId} not found`);
+    }
+
+    return {
+      userId: user.id,
+      email: user.email,
+      emailCount: user.emailCount,
+      emailLimit: EMAIL_LIMIT_PER_CREDENTIAL,
+      isLimitReached: user.isLimitReached,
+    };
   }
 
   async bulkDeleteEmails(ids: string[], userId: string) {
@@ -335,18 +461,25 @@ export class UserService {
       relations: ['credential'],
     });
 
-    // Filter emails that have unsubscribe capability and aren't already unsubscribed
+    // Filter emails that have unsubscribe capability and aren't already unsubscribed or processing
     const unsubscribableEmails = emails.filter(
-      (e) => e.hasUnsubscribe && !e.unsubscribed,
+      (e) =>
+        e.hasUnsubscribe &&
+        !e.unsubscribed &&
+        e.unsubscribeStatus !== UnsubscribeStatus.PENDING &&
+        e.unsubscribeStatus !== UnsubscribeStatus.PROCESSING,
     );
 
     if (unsubscribableEmails.length === 0) {
       return { updated: 0, queued: 0 };
     }
 
-    // Queue unsubscribe action for each email (async)
+    // Set status to pending and queue unsubscribe action for each email
     let queued = 0;
     for (const email of unsubscribableEmails) {
+      email.unsubscribeStatus = UnsubscribeStatus.PENDING;
+      await this.incomingEmailRepository.save(email);
+
       await this.queuePublisher.publish(Events.UNSUBSCRIBE_EMAIL, {
         emailId: email.id,
       });

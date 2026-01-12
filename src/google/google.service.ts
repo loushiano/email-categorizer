@@ -63,6 +63,16 @@ export class GoogleSerivce {
         return;
       }
 
+      // Check if user email limit is reached
+      if (credential.user.isLimitReached) {
+        this.logger.warn(
+          `Email limit reached for user ${credential.user.email}, stopping watch for ${inboxEmail}`,
+        );
+        message.ack();
+        await this.stopWatchForCredential(credential);
+        return;
+      }
+
       if (aboutToExpire(credential.expiryDate)) {
         credential = await this.renewTokenForCredential(credential);
         if (!credential) {
@@ -117,6 +127,15 @@ export class GoogleSerivce {
 
       // Process each message
       for (const msgId of messageIds) {
+        // Check if user email limit is reached before processing
+        if (credential.user.isLimitReached) {
+          this.logger.warn(
+            `Email limit reached for user ${credential.user.email}, stopping processing`,
+          );
+          await this.stopWatchForCredential(credential);
+          break;
+        }
+
         // Check if we already have this message
         const existingEmail =
           await this.userService.findIncomingEmailByMessageId(msgId);
@@ -142,6 +161,18 @@ export class GoogleSerivce {
           creationDate: emailData.creationDate,
           attachments: [],
         });
+
+        // Increment user email count and check limit
+        const { isLimitReached } =
+          await this.userService.incrementUserEmailCount(credential.user.id);
+
+        if (isLimitReached) {
+          this.logger.warn(
+            `Email limit reached for user ${credential.user.email} after saving email ${savedEmail.id}`,
+          );
+          credential.user.isLimitReached = true;
+          await this.stopWatchForCredential(credential);
+        }
 
         // Archive the email (remove from INBOX)
         await this.archiveMessage(tokens.access_token, msgId, gmail);

@@ -36,6 +36,17 @@ export class UsersController {
     );
   }
 
+  // Get user email status (email count, limit info)
+  @Get('email-status')
+  async getUserEmailStatus(@Res() res, @Req() req) {
+    return formatResponse(
+      this.logger,
+      this.userService.getUserEmailStatus(req.user.id),
+      res,
+      'getting user email status',
+    );
+  }
+
   // Get incoming emails by category id
   @Get('incoming-emails/category/:categoryId')
   async getIncomingEmailsByCategory(

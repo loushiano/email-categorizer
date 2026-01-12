@@ -8,6 +8,7 @@ import {
 } from 'typeorm';
 import { UserCredential } from './userCredendtial.entity';
 import { UserEmailCategory } from './userEmailCategory.entity';
+import { UnsubscribeStatus, EmailProcessingStatus } from '../utils/constants';
 
 @Entity('user_incoming_emails')
 export class UserIncomingEmail {
@@ -49,8 +50,30 @@ export class UserIncomingEmail {
   @Column({ name: 'is_processed', type: 'boolean', default: false })
   isProcessed: boolean;
 
+  @Column({
+    name: 'processing_status',
+    type: 'enum',
+    enum: EmailProcessingStatus,
+    default: EmailProcessingStatus.PENDING,
+  })
+  processingStatus: EmailProcessingStatus;
+
+  @Column({ name: 'processed_at', type: 'bigint', nullable: true })
+  processedAt: number;
+
+  @Column({ name: 'processing_attempts', type: 'int', default: 0 })
+  processingAttempts: number;
+
   @Column({ name: 'unsubscribed', type: 'boolean', default: false })
   unsubscribed: boolean;
+
+  @Column({
+    name: 'unsubscribe_status',
+    type: 'enum',
+    enum: UnsubscribeStatus,
+    default: UnsubscribeStatus.NONE,
+  })
+  unsubscribeStatus: UnsubscribeStatus;
 
   @Column({ name: 'creation_date', type: 'bigint' })
   creationDate: number;

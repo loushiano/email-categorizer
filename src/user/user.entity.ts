@@ -27,6 +27,12 @@ export class User {
   @Column({ name: 'status', default: UserStatus.VALID })
   status: UserStatus;
 
+  @Column({ name: 'email_count', type: 'int', default: 0 })
+  emailCount: number;
+
+  @Column({ name: 'is_limit_reached', type: 'boolean', default: false })
+  isLimitReached: boolean;
+
   @CreateDateColumn({
     name: 'created_at',
     type: 'timestamp',

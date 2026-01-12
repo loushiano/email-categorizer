@@ -3,7 +3,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { Events, getListening } from '../queue/queue-constants';
 import { ClaudeService } from './claude.service';
 import { UserService } from '../user/user.service';
-import { Public } from 'src/utils/constants';
+import {
+  Public,
+  UnsubscribeStatus,
+  EmailProcessingStatus,
+} from 'src/utils/constants';
 
 @Injectable()
 export class LlmRabbitHandler {
@@ -41,6 +45,13 @@ export class LlmRabbitHandler {
         this.logger.log(`Email already processed: ${incomingEmailId}`);
         return;
       }
+
+      // Set status to processing and increment attempts
+      await this.userService.updateIncomingEmailProcessingStatus(
+        incomingEmailId,
+        EmailProcessingStatus.PROCESSING,
+        true,
+      );
 
       // Fetch categories for this user
       const categories = await this.userService.findAllEmailCategoriesByUserId(
@@ -82,6 +93,19 @@ export class LlmRabbitHandler {
         `Error processing incoming email ${incomingEmailId}:`,
         error,
       );
+      // Set status to failed on error
+      try {
+        await this.userService.updateIncomingEmailProcessingStatus(
+          incomingEmailId,
+          EmailProcessingStatus.FAILED,
+          false,
+        );
+      } catch (updateError) {
+        this.logger.error(
+          `Failed to update processing status for ${incomingEmailId}:`,
+          updateError,
+        );
+      }
     }
   }
 
@@ -129,8 +153,18 @@ export class LlmRabbitHandler {
 
       if (!email.hasUnsubscribe) {
         this.logger.warn(`Email ${emailId} does not have unsubscribe option`);
+        await this.userService.updateIncomingEmailUnsubscribeStatus(
+          emailId,
+          UnsubscribeStatus.FAILED,
+        );
         return;
       }
+
+      // Set status to processing
+      await this.userService.updateIncomingEmailUnsubscribeStatus(
+        emailId,
+        UnsubscribeStatus.PROCESSING,
+      );
 
       // Execute unsubscribe using Claude
       const result = await this.claudeService.executeUnsubscribe(
@@ -144,15 +178,34 @@ export class LlmRabbitHandler {
       );
 
       if (result.success) {
-        await this.userService.updateIncomingEmailUnsubscribed(emailId, true);
+        await this.userService.updateIncomingEmailUnsubscribeStatus(
+          emailId,
+          UnsubscribeStatus.COMPLETED,
+        );
         this.logger.log(`Successfully unsubscribed from email: ${emailId}`);
       } else {
+        await this.userService.updateIncomingEmailUnsubscribeStatus(
+          emailId,
+          UnsubscribeStatus.FAILED,
+        );
         this.logger.warn(
           `Failed to unsubscribe from email ${emailId}: ${result.message}`,
         );
       }
     } catch (error) {
       this.logger.error(`Error processing unsubscribe for ${emailId}:`, error);
+      // Set status to failed on error
+      try {
+        await this.userService.updateIncomingEmailUnsubscribeStatus(
+          emailId,
+          UnsubscribeStatus.FAILED,
+        );
+      } catch (updateError) {
+        this.logger.error(
+          `Failed to update unsubscribe status for ${emailId}:`,
+          updateError,
+        );
+      }
     } finally {
       resolve();
       this.isProcessingUnsubscribe = false;

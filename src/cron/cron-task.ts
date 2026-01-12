@@ -47,7 +47,7 @@ export class CronPlanner {
     }
   }
 
-  @Cron(CronExpression.EVERY_5_MINUTES)
+  @Cron(CronExpression.EVERY_MINUTE)
   public async renewTokens() {
     this.logger.log('renewing expiring tokens');
     if (await this.cache.getData('RENEW_TOKEN_KEY')) {

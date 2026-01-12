@@ -358,30 +358,11 @@ export class UserService {
     return await this.incomingEmailRepository.save(email);
   }
 
-  async incrementUserEmailCount(userId: string): Promise<{
-    emailCount: number;
-    isLimitReached: boolean;
-  }> {
-    const user = await this.userRepository.findOne({
-      where: { id: userId },
+  async getUserEmailCount(userId: string): Promise<number> {
+    const count = await this.incomingEmailRepository.count({
+      where: { credential: { user: { id: userId } } },
     });
-
-    if (!user) {
-      throw new NotFoundException(`User with id ${userId} not found`);
-    }
-
-    user.emailCount = (user.emailCount || 0) + 1;
-
-    if (user.emailCount >= EMAIL_LIMIT_PER_CREDENTIAL) {
-      user.isLimitReached = true;
-    }
-
-    await this.userRepository.save(user);
-
-    return {
-      emailCount: user.emailCount,
-      isLimitReached: user.isLimitReached,
-    };
+    return count;
   }
 
   async checkUserEmailLimit(userId: string): Promise<boolean> {
@@ -408,7 +389,7 @@ export class UserService {
     return {
       userId: user.id,
       email: user.email,
-      emailCount: user.emailCount,
+      emailCount: await this.getUserEmailCount(user.id),
       emailLimit: EMAIL_LIMIT_PER_CREDENTIAL,
       isLimitReached: user.isLimitReached,
     };

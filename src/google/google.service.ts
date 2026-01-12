@@ -6,7 +6,7 @@ import { OAuth2Client, auth } from 'google-auth-library';
 import { google } from 'googleapis';
 import { UserService } from '../user/user.service';
 import { UserCredential } from '../user/userCredendtial.entity';
-import { UserStatus } from '../utils/constants';
+import { EMAIL_LIMIT_PER_CREDENTIAL, UserStatus } from '../utils/constants';
 import {
   aboutToExpire,
   decrypt,
@@ -163,10 +163,11 @@ export class GoogleSerivce {
         });
 
         // Increment user email count and check limit
-        const { isLimitReached } =
-          await this.userService.incrementUserEmailCount(credential.user.id);
+        const count = await this.userService.getUserEmailCount(
+          credential.user.id,
+        );
 
-        if (isLimitReached) {
+        if (count >= EMAIL_LIMIT_PER_CREDENTIAL) {
           this.logger.warn(
             `Email limit reached for user ${credential.user.email} after saving email ${savedEmail.id}`,
           );

@@ -91,14 +91,12 @@ RUN npm ci --only=production
 # Copy built application from build stage
 COPY --from=build /app/dist ./dist
 
-# Set Puppeteer environment variables
-ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=false
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/google-chrome-stable
-
-# Install Chromium via Puppeteer (downloads compatible version)
+# Install Chrome via Puppeteer (downloads compatible version to ~/.cache/puppeteer)
+# Set PUPPETEER_CACHE_DIR so it's accessible to the app
+ENV PUPPETEER_CACHE_DIR=/app/.cache/puppeteer
 RUN npx puppeteer browsers install chrome
 
-# Change ownership of app directory
+# Change ownership of app directory (including puppeteer cache)
 RUN chown -R appuser:appuser /app
 
 # Switch to non-root user

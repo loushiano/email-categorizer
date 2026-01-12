@@ -504,12 +504,20 @@ export class GoogleSerivce {
       succeeded = false;
     }
 
-    // If userEmail was provided in state, use that to find the existing user
-    // Otherwise, use the Google email to find or create the user
-    const lookupEmail = userEmail || inboxEmail;
-    let userDB = await this.userService.findByEmail(lookupEmail, {}, [
-      'credentials',
-    ]);
+    // First, check if there's an existing credential with this inbox email
+    // This allows users to log in with any of their connected Google accounts
+    const existingCredential = await this.userService.findCredentialByInboxEmail(
+      inboxEmail,
+      ['user', 'user.credentials'],
+    );
+
+    let userDB = existingCredential?.user;
+
+    // If no credential found, check if userEmail was provided in state (linking new credential)
+    // or fall back to finding/creating user by the Google email
+    if (!userDB && userEmail) {
+      userDB = await this.userService.findByEmail(userEmail, {}, ['credentials']);
+    }
 
     if (!userDB) {
       // Create new user from Google profile
@@ -521,8 +529,8 @@ export class GoogleSerivce {
     }
 
     if (succeeded) {
-      // Find existing credential for this inbox email or create new one
-      let credential = userDB.credentials?.find(
+      // Use existing credential or create new one
+      let credential = existingCredential || userDB.credentials?.find(
         (c) => c.inboxEmail === inboxEmail,
       );
 

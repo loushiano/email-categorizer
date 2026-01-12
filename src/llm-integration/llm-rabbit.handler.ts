@@ -156,14 +156,16 @@ export class LlmRabbitHandler {
         await this.userService.updateIncomingEmailUnsubscribeStatus(
           emailId,
           UnsubscribeStatus.FAILED,
+          true,
         );
         return;
       }
 
-      // Set status to processing
+      // Set status to processing and increment attempts
       await this.userService.updateIncomingEmailUnsubscribeStatus(
         emailId,
         UnsubscribeStatus.PROCESSING,
+        true,
       );
 
       // Execute unsubscribe using Claude
@@ -181,12 +183,14 @@ export class LlmRabbitHandler {
         await this.userService.updateIncomingEmailUnsubscribeStatus(
           emailId,
           UnsubscribeStatus.COMPLETED,
+          false,
         );
         this.logger.log(`Successfully unsubscribed from email: ${emailId}`);
       } else {
         await this.userService.updateIncomingEmailUnsubscribeStatus(
           emailId,
           UnsubscribeStatus.FAILED,
+          false,
         );
         this.logger.warn(
           `Failed to unsubscribe from email ${emailId}: ${result.message}`,
@@ -199,6 +203,7 @@ export class LlmRabbitHandler {
         await this.userService.updateIncomingEmailUnsubscribeStatus(
           emailId,
           UnsubscribeStatus.FAILED,
+          false,
         );
       } catch (updateError) {
         this.logger.error(

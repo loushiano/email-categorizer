@@ -341,6 +341,7 @@ export class UserService {
   async updateIncomingEmailUnsubscribeStatus(
     id: string,
     status: UnsubscribeStatus,
+    incrementAttempts: boolean = false,
   ) {
     const email = await this.incomingEmailRepository.findOne({
       where: { id },
@@ -351,11 +352,32 @@ export class UserService {
     }
 
     email.unsubscribeStatus = status;
+    email.unsubscribeAttemptedAt = Date.now();
+
+    if (incrementAttempts) {
+      email.unsubscribeAttempts = (email.unsubscribeAttempts || 0) + 1;
+    }
+
     if (status === UnsubscribeStatus.COMPLETED) {
       email.unsubscribed = true;
     }
 
     return await this.incomingEmailRepository.save(email);
+  }
+
+  async findFailedUnsubscribesForRetry(retryAfterMinutes: number = 5) {
+    const retryThreshold = Date.now() - retryAfterMinutes * 60 * 1000;
+
+    return await this.incomingEmailRepository
+      .createQueryBuilder('email')
+      .where('email.unsubscribeStatus = :status', {
+        status: UnsubscribeStatus.FAILED,
+      })
+      .andWhere('email.unsubscribeAttempts < :maxAttempts', { maxAttempts: 2 })
+      .andWhere('email.unsubscribeAttemptedAt < :threshold', {
+        threshold: retryThreshold,
+      })
+      .getMany();
   }
 
   async getUserEmailCount(userId: string): Promise<number> {

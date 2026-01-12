@@ -107,4 +107,39 @@ export class CronPlanner {
       await this.cache.evictData('RETRY_FAILED_EMAILS_KEY');
     }
   }
+
+  @Cron(CronExpression.EVERY_5_MINUTES)
+  public async retryFailedUnsubscriptions() {
+    this.logger.log('checking for failed unsubscriptions to retry');
+    if (await this.cache.getData('RETRY_FAILED_UNSUB_KEY')) {
+      this.logger.log('previous unsubscribe retry job in progress! will skip');
+      return;
+    }
+    try {
+      await this.cache.setData('RETRY_FAILED_UNSUB_KEY', '1', 300);
+
+      // Find failed unsubscriptions that haven't been retried yet (max 1 retry attempt)
+      // and were attempted more than 5 minutes ago
+      const failedUnsubscribes =
+        await this.userService.findFailedUnsubscribesForRetry(5);
+
+      this.logger.log(
+        `Found ${failedUnsubscribes.length} failed unsubscriptions to retry`,
+      );
+
+      for (const email of failedUnsubscribes) {
+        this.logger.log(
+          `Requeueing failed unsubscription ${email.id} (attempt ${email.unsubscribeAttempts + 1})`,
+        );
+        await this.queuePublisher.publish(Events.UNSUBSCRIBE_EMAIL, {
+          emailId: email.id,
+        });
+      }
+    } catch (error) {
+      this.logger.error('error retrying failed unsubscriptions');
+      this.logger.error(error);
+    } finally {
+      await this.cache.evictData('RETRY_FAILED_UNSUB_KEY');
+    }
+  }
 }

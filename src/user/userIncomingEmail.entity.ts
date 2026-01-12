@@ -75,6 +75,12 @@ export class UserIncomingEmail {
   })
   unsubscribeStatus: UnsubscribeStatus;
 
+  @Column({ name: 'unsubscribe_attempted_at', type: 'bigint', nullable: true })
+  unsubscribeAttemptedAt: number;
+
+  @Column({ name: 'unsubscribe_attempts', type: 'int', default: 0 })
+  unsubscribeAttempts: number;
+
   @Column({ name: 'creation_date', type: 'bigint' })
   creationDate: number;
 

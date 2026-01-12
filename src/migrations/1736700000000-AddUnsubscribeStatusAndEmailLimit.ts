@@ -35,6 +35,13 @@ export class AddUnsubscribeStatusAndEmailLimit1736700000000 implements Migration
             WHERE \`is_processed\` = 1
         `);
 
+        // Update existing unsubscribed emails to have completed status
+        await queryRunner.query(`
+            UPDATE \`user_incoming_emails\`
+            SET \`unsubscribe_status\` = 'completed'
+            WHERE \`unsubscribed\` = 1
+        `);
+
         // Add email_count and is_limit_reached columns to users table (per user limit)
         await queryRunner.query(`
             ALTER TABLE \`users\`

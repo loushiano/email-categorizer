@@ -76,6 +76,7 @@ export class GoogleSerivce {
       if (aboutToExpire(credential.expiryDate)) {
         credential = await this.renewTokenForCredential(credential);
         if (!credential) {
+          await this.stopWatchForCredential(credential);
           message.ack();
           return;
         }
